@@ -1,0 +1,182 @@
+PREPROCESSING
+# import library
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+data = pd.read_csv('/content/gowalla_userinfo.csv')
+data.describe()
+data.head(5)
+
+data1 = pd.read_csv('/content/gowalla_spots_subset1.csv')
+data1.describe()
+data1.head(5)
+
+# mengecek missing values
+# Tampilkan jumlah missing values di setiap kolom
+print("jumlah missing values userinfo: \n",data.isnull().sum())
+print("jumlah missing values spot_subset1: \n",data1.isnull().sum())
+
+# Mengisi missing values data1 dengan menggunakan rata-rata (mean)
+data1['lng'].fillna(data1['lng'].mean(), inplace=True)
+data1['lat'].fillna(data1['lat'].mean(), inplace=True)
+data1['photos_count'].fillna(data1['photos_count'].mean(), inplace=True)
+data1['users_count'].fillna(data1['users_count'].mean(), inplace=True)
+data1['checkins_count'].fillna(data1['checkins_count'].mean(), inplace=True)
+data1['radius_meters'].fillna(data1['radius_meters'].mean(), inplace=True)
+data1['highlights_count'].fillna(data1['highlights_count'].mean(), inplace=True)
+data1['items_count'].fillna(data1['items_count'].mean(), inplace=True)
+data1['max_items_count'].fillna(data1['max_items_count'].mean(), inplace=True)
+data1['spot_categories'].fillna(data['spot_categories'].mode())
+
+# Now, check for missing values in the original DataFrame 'data1'
+print("Jumlah setelah mengisi missing values: \n", data1.isnull().sum())
+
+# Cek duplikasi
+print(f"Jumlah duplikasi: {data.duplicated().sum()}")
+print(f"Jumlah duplikasi: {data1.duplicated().sum()}")
+print(f"Jumlah duplikasi: {data2.duplicated().sum()}")
+print(f"Jumlah duplikasi: {data3.duplicated().sum()}")
+# Hapus duplikasi
+data = data.drop_duplicates()
+data1 = data1.drop_duplicates()
+data2 = data2.drop_duplicates()
+data3 = data3.drop_duplicates()
+
+# Menemukan baris duplikat data user_info
+duplicated_rows = data[data.duplicated()]
+print(duplicated_rows)
+
+# Menemukan baris duplikat data spots_subset1
+duplicated_rows = data1[data1.duplicated()]
+print(duplicated_rows)
+
+
+VISUALISASI 1
+import matplotlib.pyplot as plt
+
+# Plot titik geografis
+plt.figure(figsize=(10, 8))
+plt.scatter(data1['lng'], data1['lat'], alpha=0.6, c='blue', edgecolor='k', s=50)
+
+# Menambahkan judul dan label
+plt.title('Persebaran Geografis Pengguna', fontsize=16)
+plt.xlabel('Longitude', fontsize=12)
+plt.ylabel('Latitude', fontsize=12)
+
+# Menampilkan plot
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.show()
+
+
+VISUALISASI 2
+# Scatter Plot
+plt.figure(figsize=(10, 6))
+plt.scatter(data['friends_count'], data['checkin_num'], alpha = 0.7, c = 'blue', edgecolor = 'k')
+
+# Tambahkan judul dan label
+plt.title('Korelasi antara Jumlah Teman dan Frekuensi Check-In Pengguna', fontsize = 14)
+plt.xlabel('Jumlah Teman', fontsize = 12)
+plt.ylabel('Frekuensi Check-In', fontsize = 12)
+
+# Menampilkan grid untuk visibilitas
+plt.grid(alpha = 0.3)
+
+plt.tight_layout()
+plt.show()
+
+
+DATA TRANSFORMATION
+import pandas as pd
+import ast
+
+# Fungsi untuk ekstraksi kategori dari kolom spot_categories
+def extract_category(spot_categories):
+    try:
+        # Mengubah string menjadi list/dictionary
+        categories = ast.literal_eval(spot_categories)
+        # Mengambil nilai 'name' dari elemen pertama
+        return categories[0]['name'] if categories else None
+    except (ValueError, IndexError, KeyError):
+        return None
+
+# Membuat kolom baru dengan hasil kategori
+data1['category'] = data1['spot_categories'].apply(extract_category)
+
+
+DATA AGGREGATION
+# Mengelompokkan data berdasarkan kategori dan menghitung jumlah check-in
+category_summary = (
+    data1.groupby('category')['checkins_count']
+    .sum()
+    .reset_index()
+    .sort_values(by='checkins_count', ascending=False)
+)
+
+# Memilih 10 kategori dengan jumlah check-in terbanyak
+top_10_categories = category_summary.head(10)
+
+
+VISUALISASI 3
+# Visualisasi Data dengan Bar Chart
+plt.figure(figsize=(12, 6))
+
+# Barplot untuk Jumlah Check-In pada 10 Kategori Terbanyak
+sns.barplot(
+    x='checkins_count',
+    y='category',
+    data=top_10_categories,
+    palette="Blues_d"
+)
+
+# Tambahkan Judul dan Label
+plt.title('10 Kategori dengan Jumlah Check-In Terbanyak', fontsize = 14)
+plt.xlabel('Jumlah Check-In (Total Kunjungan)', fontsize = 12)
+plt.ylabel('Kategori ', fontsize = 12)
+
+# Anotasi pada Puncak Bar
+for index, value in enumerate(top_10_categories['checkins_count']):
+    plt.text(value + 1, index, str(value), color='black', va='center', fontsize = 10)
+
+plt.tight_layout()
+plt.show()
+
+
+CALCULATION PEARSON CORRELATION
+from scipy.stats import pearsonr
+
+# Hitung Korelasi Pearson
+correlation, p_value = pearsonr(data['stamps_count'], data['places_num'])
+print(f"Korelasi Pearson: {correlation : .2f} (p-value: {p_value : .3f})")
+
+
+MEMBUAT MODEL REGRESI LINEAR
+import numpy as np
+
+
+# Membuat model regresi linier
+z = np.polyfit(data['stamps_count'], data['places_num'], 1)
+p = np.poly1d(z)
+print('model regresi:' ,p)
+
+
+VISUALISASI 4
+# Visualisasi Scatter Plot
+plt.figure(figsize=(10, 6))
+plt.scatter(data['stamps_count'], data['places_num'], alpha = 0.7, c = 'blue', edgecolor = 'k')
+
+# Tambahkan garis trendline
+plt.plot(data['stamps_count'], p(data['stamps_count']), linestyle = '--', color = 'orange', label = 'Trendline')
+
+# Tambahkan judul dan label
+plt.title('Korelasi antara Jumlah Stempel dan Tempat Unik yang Dikunjungi', fontsize = 14)
+plt.xlabel('Jumlah Stempel', fontsize = 12)
+plt.ylabel('Jumlah Tempat Unik yang Dikunjungi', fontsize=12)
+plt.legend()
+
+# Menampilkan grid untuk visibilitas
+plt.grid(alpha = 0.3)
+plt.tight_layout()
+plt.show()
+
